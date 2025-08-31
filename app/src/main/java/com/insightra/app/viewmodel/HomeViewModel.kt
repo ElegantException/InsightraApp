@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class RecentComparisonUi(val id: Long, val itemCount: Int, val date: String)
 
@@ -23,7 +26,11 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             comparisonDao.recent().collectLatest { list ->
-                _recent.value = list.map { RecentComparisonUi(it.id, it.itemCount, it.createdAt.toString()) }
+                _recent.value = list.map {
+                    val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                    val dateStr = fmt.format(Date(it.createdAt))
+                    RecentComparisonUi(it.id, it.itemCount, dateStr)
+                }
             }
         }
     }
