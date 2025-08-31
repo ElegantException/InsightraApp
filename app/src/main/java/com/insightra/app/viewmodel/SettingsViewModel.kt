@@ -4,25 +4,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.insightra.app.data.prefs.SavedKeyInfo
 import com.insightra.app.data.prefs.SettingsRepository
+import com.insightra.app.network.OpenAIService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.internal.toLongOrDefault
 
 data class SavedInfoState(val date: String)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val repo: SettingsRepository
+    private val repo: SettingsRepository,
+    private val api: OpenAIService
 ) : ViewModel() {
-    private val _savedInfo = MutableStateFlow<SavedInfoState?>(null)
-    val savedInfo: SavedInfoState? get() = _savedInfo.value
+    private var _savedInfo: SavedInfoState? = null
+    val savedInfo: SavedInfoState? get() = _savedInfo
 
     init {
         viewModelScope.launch {
             val info: SavedKeyInfo? = repo.getSavedInfo()
-            _savedInfo.value = info?.let { SavedInfoState(it.date) }
+            _savedInfo = info?.let { SavedInfoState(it.date) }
         }
     }
 
@@ -33,12 +34,17 @@ class SettingsViewModel @Inject constructor(
                 return@launch
             }
             try {
-                repo.setApiKey(key)
-                val info = repo.getSavedInfo()
-                _savedInfo.value = info?.let { SavedInfoState(it.date) }
-                onSuccess()
+                val resp = api.listModels("Bearer $key")
+                if (resp.isSuccessful) {
+                    repo.setApiKey(key)
+                    val info = repo.getSavedInfo()
+                    _savedInfo = info?.let { SavedInfoState(it.date) }
+                    onSuccess()
+                } else {
+                    onError("Invalid API key")
+                }
             } catch (e: Exception) {
-                onError("Failed to save key")
+                onError("Verification failed")
             }
         }
     }

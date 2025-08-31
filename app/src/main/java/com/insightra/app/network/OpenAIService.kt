@@ -4,29 +4,36 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
-import retrofit2.converter.moshi.MoshiConverterFactory
 
 interface OpenAIService {
+    @GET("v1/models")
+    suspend fun listModels(
+        @Header("Authorization") auth: String
+    ): Response<Unit>
+
     @Multipart
     @POST("v1/responses")
     suspend fun uploadImageAndExtract(
         @Header("Authorization") auth: String,
         @Part file: MultipartBody.Part,
         @Part("model") model: RequestBody,
-        @Part("input_text") inputText: RequestBody
-    ): retrofit2.Response<Unit>
+        @Part("input") input: RequestBody
+    ): Response<Unit>
 
     @POST("v1/responses")
     suspend fun generateComparison(
         @Header("Authorization") auth: String,
         @Body body: RequestBody
-    ): retrofit2.Response<Unit>
+    ): Response<Unit>
 
     companion object {
         fun create(): OpenAIService {
