@@ -1,6 +1,9 @@
 package com.insightra.app.ui.screens
 
+import android.content.ContentValues
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,8 +24,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContentResolverCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.insightra.app.viewmodel.WizardViewModel
@@ -33,6 +40,30 @@ fun WizardScreen(
     vm: WizardViewModel = hiltViewModel()
 ) {
     val state = vm.state
+    val context = LocalContext.current
+    val contentResolver = context.contentResolver
+
+    val pendingCaptureUri = remember { mutableStateOf<Uri?>(null) }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createImageUri()
+            pendingCaptureUri.value = uri
+            if (uri != null) takePictureLauncher.launch(uri)
+        }
+    }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCaptureUri.value
+        if (success && uri != null) {
+            vm.addImage(uri)
+        }
+        pendingCaptureUri.value = null
+    }
 
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -40,11 +71,25 @@ fun WizardScreen(
         if (uri != null) vm.addImage(uri)
     }
 
+    fun createImageUri(): Uri? {
+        val name = "insightra_${System.currentTimeMillis()}.jpg"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.IS_PENDING, 0)
+            }
+        }
+        return contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        )
+    }
+
     Column {
         Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
             Button(onClick = {
-                // Camera flow can be added; for now, use gallery to unblock
-                galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
             }, enabled = state.items.size < 3) {
                 Icon(Icons.Default.CameraAlt, contentDescription = "Camera")
                 Text("Camera")
