@@ -23,6 +23,8 @@ class OpenAIRepository(
     private val contentResolver: ContentResolver,
     private val cacheDirProvider: () -> File
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     suspend fun verifyKey(apiKey: String): Boolean {
         return try {
             val resp = service.listModels("Bearer $apiKey")
@@ -60,13 +62,14 @@ class OpenAIRepository(
                     model = model,
                     input = inputJson
                 )
-                val result: ResponsesCreateResult? = resp.body()
+                val bodyString = resp.body()?.string().orEmpty()
+                val result = runCatching { json.decodeFromString(ResponsesCreateResult.serializer(), bodyString) }.getOrNull()
                 val jsonText = result?.output
                     ?.flatMap { it.content }
                     ?.firstNotNullOfOrNull { it.outputText?.content ?: it.text }
                     ?: "{}"
                 val parsed = runCatching {
-                    Json.decodeFromString(VisionExtractResult.serializer(), jsonText)
+                    json.decodeFromString(VisionExtractResult.serializer(), jsonText)
                 }.getOrNull() ?: VisionExtractResult("", "", "1 unit")
                 parsed.copy(size = parsed.size.ifBlank { "1 unit" })
             } finally {
@@ -80,13 +83,14 @@ class OpenAIRepository(
         val body: RequestBody = prompt.toRequestBody("application/json".toMediaTypeOrNull())
         return withContext(Dispatchers.IO) {
             val resp = service.generateComparison("Bearer $apiKey", body)
-            val result: ResponsesCreateResult? = resp.body()
+            val bodyString = resp.body()?.string().orEmpty()
+            val result = runCatching { json.decodeFromString(ResponsesCreateResult.serializer(), bodyString) }.getOrNull()
             val jsonText = result?.output
                 ?.flatMap { it.content }
                 ?.firstNotNullOfOrNull { it.outputText?.content ?: it.text }
                 ?: """{"table":[],"ratings":[],"prosCons":[],"recommendations":[]}"""
             runCatching {
-                Json.decodeFromString(ComparisonResultPayload.serializer(), jsonText)
+                json.decodeFromString(ComparisonResultPayload.serializer(), jsonText)
             }.getOrElse {
                 ComparisonResultPayload(table = emptyList(), ratings = emptyList(), prosCons = emptyList(), recommendations = emptyList())
             }

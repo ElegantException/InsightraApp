@@ -1,13 +1,13 @@
 package com.insightra.app.network
 
-import com.insightra.app.network.model.ResponsesCreateResult
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -28,13 +28,13 @@ interface OpenAIService {
         @Part file: MultipartBody.Part,
         @Part("model") model: RequestBody,
         @Part("input") input: RequestBody
-    ): Response<ResponsesCreateResult>
+    ): Response<ResponseBody>
 
     @POST("v1/responses")
     suspend fun generateComparison(
         @Header("Authorization") auth: String,
         @Body body: RequestBody
-    ): Response<ResponsesCreateResult>
+    ): Response<ResponseBody>
 
     companion object {
         fun create(): OpenAIService {
@@ -45,7 +45,7 @@ interface OpenAIService {
             val retrofit = Retrofit.Builder()
                 .baseUrl("https://api.openai.com/")
                 .client(client)
-                .addConverterFactory(MoshiConverterFactory.create())
+                .addConverterFactory(ScalarsConverterFactory.create())
                 .build()
             return retrofit.create(OpenAIService::class.java)
         }
