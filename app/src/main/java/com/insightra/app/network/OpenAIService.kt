@@ -1,5 +1,6 @@
 package com.insightra.app.network
 
+import com.insightra.app.network.model.ResponsesCreateResult
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
@@ -27,13 +28,13 @@ interface OpenAIService {
         @Part file: MultipartBody.Part,
         @Part("model") model: RequestBody,
         @Part("input") input: RequestBody
-    ): Response<Unit>
+    ): Response<ResponsesCreateResult>
 
     @POST("v1/responses")
     suspend fun generateComparison(
         @Header("Authorization") auth: String,
         @Body body: RequestBody
-    ): Response<Unit>
+    ): Response<ResponsesCreateResult>
 
     companion object {
         fun create(): OpenAIService {
