@@ -3,6 +3,7 @@ package com.insightra.app.di
 import android.content.Context
 import androidx.room.Room
 import com.insightra.app.data.db.InsightraDatabase
+import com.insightra.app.network.OpenAIRepository
 import com.insightra.app.network.OpenAIService
 import dagger.Module
 import dagger.Provides
@@ -22,4 +23,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOpenAI(): OpenAIService = OpenAIService.create()
+
+    @Provides
+    @Singleton
+    fun provideOpenAIRepository(@ApplicationContext ctx: Context, service: OpenAIService): OpenAIRepository =
+        OpenAIRepository(service, ctx.contentResolver) { ctx.cacheDir }
 }
