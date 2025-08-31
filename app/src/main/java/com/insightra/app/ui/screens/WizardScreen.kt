@@ -1,5 +1,9 @@
 package com.insightra.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,13 +34,24 @@ fun WizardScreen(
 ) {
     val state = vm.state
 
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) vm.addImage(uri)
+    }
+
     Column {
         Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { vm.takePhoto() }) {
+            Button(onClick = {
+                // Camera flow can be added; for now, use gallery to unblock
+                galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }, enabled = state.items.size < 3) {
                 Icon(Icons.Default.CameraAlt, contentDescription = "Camera")
                 Text("Camera")
             }
-            Button(onClick = { vm.pickFromGallery() }) {
+            Button(onClick = {
+                galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }, enabled = state.items.size < 3) {
                 Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery")
                 Text("Gallery")
             }
@@ -53,16 +70,15 @@ fun WizardScreen(
                     OutlinedTextField(value = item.name, onValueChange = { vm.updateName(index, it) }, label = { Text("Name") })
                     OutlinedTextField(value = item.size, onValueChange = { vm.updateSize(index, it) }, label = { Text("Size") })
                 }
+                IconButton(onClick = { vm.removeAt(index) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Remove")
+                }
             }
             Spacer(Modifier.height(8.dp))
         }
 
         Row {
-            Button(onClick = { vm.saveCurrentItem() }, enabled = state.canSaveCurrent) {
-                Text("Save Item")
-            }
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = { vm.compare(onComparisonReady) }, enabled = state.items.size >= 2) {
+            Button(onClick = { vm.compare(onComparisonReady) }, enabled = state.canCompare) {
                 Text("Compare")
             }
         }
