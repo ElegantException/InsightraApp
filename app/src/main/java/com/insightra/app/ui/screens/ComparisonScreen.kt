@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.insightra.app.viewmodel.ComparisonViewModel
 
@@ -17,33 +19,40 @@ fun ComparisonScreen(
     comparisonId: Long,
     vm: ComparisonViewModel = hiltViewModel()
 ) {
-    val state = vm.load(comparisonId)
+    val state = vm.state.collectAsState()
+    LaunchedEffect(comparisonId) { vm.load(comparisonId) }
     Column {
-        LazyColumn {
-            items(state.tableRows) { row ->
-                Text(row.title)
-                row.values.forEach { value ->
-                    Text(value)
+        if (state.value.loading) {
+            Text("Loading...")
+        } else if (state.value.error != null) {
+            Text(state.value.error ?: "")
+        } else {
+            LazyColumn {
+                items(state.value.tableRows) { row ->
+                    Text(row.title)
+                    row.values.forEach { value ->
+                        Text(value)
+                    }
                 }
-            }
-            item {
-                Text("Ratings")
-            }
-            items(state.ratings) { r ->
-                RowRating(item = r.item, avg = r.avg, total = r.total)
-            }
-            item { Text("Pros & Cons") }
-            items(state.prosCons) { pc ->
-                Text("${pc.item} Pros")
-                pc.pros.forEach { Text("• $it") }
-                Text("${pc.item} Cons")
-                pc.cons.forEach { Text("• $it") }
-            }
-            item {
-                Text("Recommendations")
-            }
-            items(state.recommendations) { rec ->
-                Text("• $rec")
+                item {
+                    Text("Ratings")
+                }
+                items(state.value.ratings) { r ->
+                    RowRating(item = r.item, avg = r.avg, total = r.total)
+                }
+                item { Text("Pros & Cons") }
+                items(state.value.prosCons) { pc ->
+                    Text("${pc.item} Pros")
+                    pc.pros.forEach { Text("• $it") }
+                    Text("${pc.item} Cons")
+                    pc.cons.forEach { Text("• $it") }
+                }
+                item {
+                    Text("Recommendations")
+                }
+                items(state.value.recommendations) { rec ->
+                    Text("• $rec")
+                }
             }
         }
     }
